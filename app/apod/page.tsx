@@ -25,7 +25,11 @@ async function getApod(): Promise<ApodData> {
   );
 
   if (!res.ok) {
-    throw new Error("Failed to fetch NASA image of the day");
+    const errorText = await res.text();
+
+    throw new Error(
+      `Failed to fetch NASA image of the day. Status: ${res.status}. Response: ${errorText}`
+    );
   }
 
   return res.json();
