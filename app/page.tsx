@@ -11,6 +11,7 @@ const features = [
     emoji: "🛰️",
     title: "ISS Live",
     description: "Track the International Space Station as it moves above Earth.",
+    href: "/iss",
   },
   {
     emoji: "🔭",
