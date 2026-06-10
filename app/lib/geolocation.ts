@@ -1,46 +1,91 @@
+type GeoNamesSubdivisionResponse = {
+  countryName?: string;
+  adminName1?: string;
+  status?: {
+    message?: string;
+  };
+};
+
+type GeoNamesOceanResponse = {
+  ocean?: {
+    name?: string;
+  };
+  status?: {
+    message?: string;
+  };
+};
+
 export async function getLocationDescription(
   latitude: number,
   longitude: number
 ): Promise<string> {
+  const username = process.env.GEONAMES_USERNAME;
+
+  if (!username) {
+    return getDefaultLocationDescription(latitude, longitude);
+  }
+
+  const roundedLatitude = latitude.toFixed(2);
+  const roundedLongitude = longitude.toFixed(2);
+
+  const params = new URLSearchParams({
+    lat: roundedLatitude,
+    lng: roundedLongitude,
+    username,
+  });
+
   try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
+    const subdivisionResponse = await fetch(
+      `https://secure.geonames.org/countrySubdivisionJSON?${params.toString()}`,
       {
-        headers: {
-          "User-Agent": "cosmic-explorer/1.0",
+        next: {
+          revalidate: 60,
         },
       }
     );
 
-    if (!response.ok) {
-      return getDefaultLocationDescription(latitude, longitude);
+    if (subdivisionResponse.ok) {
+      const subdivision: GeoNamesSubdivisionResponse =
+        await subdivisionResponse.json();
+
+      if (subdivision.adminName1 && subdivision.countryName) {
+        return `Currently over ${subdivision.adminName1}, ${subdivision.countryName}`;
+      }
+
+      if (subdivision.countryName) {
+        return `Currently over ${subdivision.countryName}`;
+      }
     }
 
-    const data = await response.json();
-    const address = data.address || {};
+    const oceanResponse = await fetch(
+      `https://secure.geonames.org/oceanJSON?${params.toString()}`,
+      {
+        next: {
+          revalidate: 60,
+        },
+      }
+    );
 
-    // Prioritize specific location names
-    const locationName =
-      address.country_code === "us"
-        ? address.state || address.country
-        : address.region || address.country || "Unknown Location";
+    if (oceanResponse.ok) {
+      const ocean: GeoNamesOceanResponse = await oceanResponse.json();
 
-    // Add directional context if available
-    if (address.state_district) {
-      return `Currently over ${address.state_district}, ${locationName}`;
-    } else if (address.state || address.region) {
-      return `Currently over ${locationName}`;
-    } else {
-      return `Currently over ${address.country || "Open Ocean"}`;
+      if (ocean.ocean?.name) {
+        return `Currently over the ${ocean.ocean.name}`;
+      }
     }
-  } catch (error) {
+
+    return getDefaultLocationDescription(latitude, longitude);
+  } catch {
     return getDefaultLocationDescription(latitude, longitude);
   }
 }
 
-function getDefaultLocationDescription(latitude: number, longitude: number): string {
-  // Fallback descriptions based on hemisphere
+function getDefaultLocationDescription(
+  latitude: number,
+  longitude: number
+): string {
   const latDirection = latitude >= 0 ? "Northern" : "Southern";
   const lonDirection = longitude >= 0 ? "Eastern" : "Western";
+
   return `Currently over the ${latDirection} ${lonDirection} Hemisphere`;
 }
