@@ -11,33 +11,78 @@ type ApodData = {
   copyright?: string;
 };
 
-async function getApod(): Promise<ApodData> {
+async function getApod(): Promise<ApodData | null> {
   const apiKey = process.env.NASA_API_KEY;
 
   if (!apiKey) {
-    throw new Error("NASA_API_KEY is not set");
+    console.error("[APOD] NASA_API_KEY is not set");
+    return null;
   }
 
-  const res = await fetch(
-    `https://api.nasa.gov/planetary/apod?api_key=${apiKey}`,
-{
-  cache: "no-store",
-}
-  );
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
 
-  if (!res.ok) {
-    const errorText = await res.text();
-
-    throw new Error(
-      `Failed to fetch NASA image of the day. Status: ${res.status}. Response: ${errorText}`
+  try {
+    const res = await fetch(
+      `https://api.nasa.gov/planetary/apod?api_key=${apiKey}`,
+      {
+        cache: "no-store",
+        signal: controller.signal,
+      }
     );
-  }
 
-  return res.json();
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      const errorText = await res.text();
+
+      console.error("[APOD] Fetch failed:", {
+        status: res.status,
+        response: errorText,
+      });
+
+      return null;
+    }
+
+    return res.json();
+  } catch (error) {
+    clearTimeout(timeout);
+    console.error("[APOD] Request errored or timed out:", error);
+    return null;
+  }
 }
 
 export default async function ApodPage() {
   const apod = await getApod();
+  if (!apod) {
+  return (
+    <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
+      <section className="mx-auto max-w-5xl">
+        <Link
+          href="/"
+          className="mb-8 inline-block text-sm text-cyan-300 transition hover:text-cyan-200"
+        >
+          ← Back to Cosmic Explorer
+        </Link>
+
+        <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+          NASA Image of the Day
+        </p>
+
+        <div className="rounded-2xl border border-yellow-300/20 bg-yellow-300/10 p-6">
+          <h1 className="text-3xl font-bold">
+            NASA’s image service is taking a space nap.
+          </h1>
+
+          <p className="mt-4 max-w-2xl text-slate-300">
+            The Astronomy Picture of the Day could not be loaded right now.
+            This usually means NASA’s API is slow or temporarily unavailable.
+          </p>
+        </div>
+      </section>
+    </main>
+  );
+}
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
