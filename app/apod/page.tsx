@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 
 type ApodData = {
@@ -23,12 +24,10 @@ async function getApod(): Promise<ApodData> {
   try {
     const res = await fetch(
       `https://api.nasa.gov/planetary/apod?api_key=${apiKey}`,
-      {
-        next: {
-          revalidate: 60 * 60 * 24,
-        },
-        signal: controller.signal,
-      }
+  {
+  cache: "no-store",
+  signal: controller.signal,
+}
     );
 
     if (!res.ok) {
