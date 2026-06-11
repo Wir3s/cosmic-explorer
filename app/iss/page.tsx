@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { fetchIssPosition } from "@/app/lib/iss";
 import { getLocationDescription } from "@/app/lib/geolocation";
 
 export const dynamic = "force-dynamic";
@@ -44,8 +45,12 @@ function formatTime(timestamp: number) {
 }
 
 export default async function IssPage() {
-  const iss = await getIssPosition();
-  const locationDescription = await getLocationDescription(iss.latitude, iss.longitude);
+const iss = await fetchIssPosition();
+
+const locationDescription = await getLocationDescription(
+  iss.latitude,
+  iss.longitude
+);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">

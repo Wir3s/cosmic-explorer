@@ -25,28 +25,21 @@ export async function getLocationDescription(
     return getDefaultLocationDescription(latitude, longitude);
   }
 
-  const roundedLatitude = latitude.toFixed(2);
-  const roundedLongitude = longitude.toFixed(2);
-
   const params = new URLSearchParams({
-    lat: roundedLatitude,
-    lng: roundedLongitude,
+    lat: latitude.toFixed(2),
+    lng: longitude.toFixed(2),
     username,
   });
 
   try {
     const subdivisionResponse = await fetch(
       `https://secure.geonames.org/countrySubdivisionJSON?${params.toString()}`,
-      {
-        next: {
-          revalidate: 60,
-        },
-      }
+      { cache: "no-store" }
     );
 
     if (subdivisionResponse.ok) {
-      const subdivision: GeoNamesSubdivisionResponse =
-        await subdivisionResponse.json();
+      const subdivision =
+        (await subdivisionResponse.json()) as GeoNamesSubdivisionResponse;
 
       if (subdivision.adminName1 && subdivision.countryName) {
         return `Currently over ${subdivision.adminName1}, ${subdivision.countryName}`;
@@ -59,15 +52,11 @@ export async function getLocationDescription(
 
     const oceanResponse = await fetch(
       `https://secure.geonames.org/oceanJSON?${params.toString()}`,
-      {
-        next: {
-          revalidate: 60,
-        },
-      }
+      { cache: "no-store" }
     );
 
     if (oceanResponse.ok) {
-      const ocean: GeoNamesOceanResponse = await oceanResponse.json();
+      const ocean = (await oceanResponse.json()) as GeoNamesOceanResponse;
 
       if (ocean.ocean?.name) {
         return `Currently over the ${ocean.ocean.name}`;
@@ -75,7 +64,8 @@ export async function getLocationDescription(
     }
 
     return getDefaultLocationDescription(latitude, longitude);
-  } catch {
+  } catch (error) {
+    console.error("[ISS location] Failed to describe location:", error);
     return getDefaultLocationDescription(latitude, longitude);
   }
 }
@@ -84,8 +74,59 @@ function getDefaultLocationDescription(
   latitude: number,
   longitude: number
 ): string {
-  const latDirection = latitude >= 0 ? "Northern" : "Southern";
-  const lonDirection = longitude >= 0 ? "Eastern" : "Western";
+  const absLat = Math.abs(latitude);
 
-  return `Currently over the ${latDirection} ${lonDirection} Hemisphere`;
+  if (absLat >= 66.5) {
+    return latitude >= 0
+      ? "Currently over the Arctic region"
+      : "Currently over Antarctica or the Southern Ocean";
+  }
+
+  if (latitude >= 0 && longitude >= -80 && longitude <= 20) {
+    return "Currently over the North Atlantic region";
+  }
+
+  if (latitude < 0 && longitude >= -70 && longitude <= 20) {
+    return "Currently over the South Atlantic region";
+  }
+
+  if (
+    latitude >= 0 &&
+    ((longitude >= 120 && longitude <= 180) ||
+      (longitude >= -180 && longitude <= -70))
+  ) {
+    return "Currently over the North Pacific region";
+  }
+
+  if (
+    latitude < 0 &&
+    ((longitude >= 120 && longitude <= 180) ||
+      (longitude >= -180 && longitude <= -70))
+  ) {
+    return "Currently over the South Pacific region";
+  }
+
+  if (latitude < 30 && latitude > -60 && longitude > 20 && longitude < 120) {
+    return "Currently over the Indian Ocean region";
+  }
+
+  if (latitude >= 0 && longitude > 20 && longitude <= 60) {
+    return "Currently over Europe, North Africa, or western Asia";
+  }
+
+  if (latitude < 0 && longitude > 20 && longitude <= 60) {
+    return "Currently over Africa or the western Indian Ocean";
+  }
+
+  if (latitude >= 0 && longitude > 60 && longitude < 120) {
+    return "Currently over central or eastern Asia";
+  }
+
+  if (latitude < 0 && longitude > 60 && longitude < 150) {
+    return "Currently over Australia, Indonesia, or the surrounding ocean";
+  }
+
+  return latitude >= 0
+    ? "Currently over the Northern Hemisphere"
+    : "Currently over the Southern Hemisphere";
 }
