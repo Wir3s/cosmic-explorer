@@ -1,71 +1,146 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { fetchApod } from "@/app/lib/apod";
 import { fetchIssPosition } from "@/app/lib/iss";
 import { getLocationDescription } from "@/app/lib/geolocation";
 
-export const dynamic = "force-dynamic";
-
-type Feature = {
+function FeatureCard({
+  emoji,
+  title,
+  description,
+  href,
+  isLive,
+  isLoading,
+}: {
   emoji: string;
   title: string;
   description: string;
   href?: string;
   isLive?: boolean;
-};
+  isLoading?: boolean;
+}) {
+  const cardContent = (
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <div className="text-4xl">{emoji}</div>
 
-async function getApodPreview() {
+        {isLive && (
+          <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
+            {isLoading ? "Loading" : "Live"}
+          </span>
+        )}
+      </div>
+
+      <h2 className="mt-4 text-2xl font-semibold">{title}</h2>
+
+      <p className={isLoading ? "mt-3 text-slate-500" : "mt-3 text-slate-300"}>
+        {description}
+      </p>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="rounded-2xl border border-cyan-300/30 bg-white/5 p-6 shadow-lg transition hover:border-cyan-300/70 hover:bg-white/10"
+      >
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return (
+    <article className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg opacity-75">
+      {cardContent}
+    </article>
+  );
+}
+
+async function ApodPreviewCard() {
   try {
     const apod = await fetchApod();
-    return `Today: ${apod.title}`;
+
+    return (
+      <FeatureCard
+        emoji="🌌"
+        title="NASA Image of the Day"
+        description={`Today: ${apod.title}`}
+        href="/apod"
+        isLive
+      />
+    );
   } catch (error) {
     console.error("[Homepage] Failed to load APOD preview:", error);
-    return "Explore today’s astronomy image.";
+
+    return (
+      <FeatureCard
+        emoji="🌌"
+        title="NASA Image of the Day"
+        description="Explore today’s astronomy image."
+        href="/apod"
+        isLive
+      />
+    );
   }
 }
 
-async function getIssPreview() {
+async function IssPreviewCard() {
   try {
     const iss = await fetchIssPosition();
-    return await getLocationDescription(iss.latitude, iss.longitude);
+    const location = await getLocationDescription(iss.latitude, iss.longitude);
+
+    return (
+      <FeatureCard
+        emoji="🛰️"
+        title="ISS Live"
+        description={location}
+        href="/iss"
+        isLive
+      />
+    );
   } catch (error) {
     console.error("[Homepage] Failed to load ISS preview:", error);
-    return "Track the station above Earth.";
+
+    return (
+      <FeatureCard
+        emoji="🛰️"
+        title="ISS Live"
+        description="Track the station above Earth."
+        href="/iss"
+        isLive
+      />
+    );
   }
 }
 
-export default async function Home() {
-  const [apodPreview, issPreview] = await Promise.all([
-    getApodPreview(),
-    getIssPreview(),
-  ]);
+function ApodPreviewSkeleton() {
+  return (
+    <FeatureCard
+      emoji="🌌"
+      title="NASA Image of the Day"
+      description="Checking today’s astronomy image..."
+      href="/apod"
+      isLive
+      isLoading
+    />
+  );
+}
 
-  const features: Feature[] = [
-    {
-      emoji: "🌌",
-      title: "NASA Image of the Day",
-      description: apodPreview,
-      href: "/apod",
-      isLive: true,
-    },
-    {
-      emoji: "🛰️",
-      title: "ISS Live",
-      description: issPreview,
-      href: "/iss",
-      isLive: true,
-    },
-    {
-      emoji: "🔭",
-      title: "James Webb",
-      description: "Explore deep-space images and discoveries from Webb.",
-    },
-    {
-      emoji: "🪐",
-      title: "NASA Images",
-      description: "Search planets, missions, galaxies, and cosmic oddities.",
-    },
-  ];
+function IssPreviewSkeleton() {
+  return (
+    <FeatureCard
+      emoji="🛰️"
+      title="ISS Live"
+      description="Finding the station’s current position..."
+      href="/iss"
+      isLive
+      isLoading
+    />
+  );
+}
 
+export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
       <section className="mx-auto max-w-5xl">
@@ -83,44 +158,25 @@ export default async function Home() {
         </p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2">
-          {features.map((feature) => {
-            const cardContent = (
-              <>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="text-4xl">{feature.emoji}</div>
+          <Suspense fallback={<ApodPreviewSkeleton />}>
+            <ApodPreviewCard />
+          </Suspense>
 
-                  {feature.isLive && (
-                    <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
-                      Live
-                    </span>
-                  )}
-                </div>
+          <Suspense fallback={<IssPreviewSkeleton />}>
+            <IssPreviewCard />
+          </Suspense>
 
-                <h2 className="mt-4 text-2xl font-semibold">
-                  {feature.title}
-                </h2>
+          <FeatureCard
+            emoji="🔭"
+            title="James Webb"
+            description="Explore deep-space images and discoveries from Webb."
+          />
 
-                <p className="mt-3 text-slate-300">{feature.description}</p>
-              </>
-            );
-
-            return feature.href ? (
-              <Link
-                key={feature.title}
-                href={feature.href}
-                className="rounded-2xl border border-cyan-300/30 bg-white/5 p-6 shadow-lg transition hover:border-cyan-300/70 hover:bg-white/10"
-              >
-                {cardContent}
-              </Link>
-            ) : (
-              <article
-                key={feature.title}
-                className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg opacity-75"
-              >
-                {cardContent}
-              </article>
-            );
-          })}
+          <FeatureCard
+            emoji="🪐"
+            title="NASA Images"
+            description="Search planets, missions, galaxies, and cosmic oddities."
+          />
         </div>
       </section>
     </main>
