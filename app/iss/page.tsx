@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fetchIssPosition } from "@/app/lib/iss";
 import { getLocationDescription } from "@/app/lib/geolocation";
+import { IssMap } from "@/app/components/IssMap";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +86,12 @@ const locationDescription = await getLocationDescription(
               {locationDescription}
             </p>
           </div>
+
+          <IssMap
+  latitude={iss.latitude}
+  longitude={iss.longitude}
+  locationDescription={locationDescription}
+/>
 
           <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <div>
