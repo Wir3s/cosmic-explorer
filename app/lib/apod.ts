@@ -19,21 +19,15 @@ export async function fetchApod(): Promise<ApodData> {
   const timeout = setTimeout(() => controller.abort(), 15000);
 
   try {
-    const res = await fetch(
-      `https://api.nasa.gov/planetary/apod?api_key=${apiKey}`,
-      {
-        cache: "no-store",
-        signal: controller.signal,
-      }
-    );
-
-    if (!res.ok) {
-      const errorText = await res.text();
-
-      throw new Error(
-        `Failed to fetch NASA image of the day. Status: ${res.status}. Response: ${errorText}`
-      );
-    }
+const res = await fetch(
+  `https://api.nasa.gov/planetary/apod?api_key=${apiKey}`,
+  {
+    next: {
+      revalidate: 60 * 60 * 24,
+    },
+    signal: controller.signal,
+  }
+);
 
     return res.json();
   } finally {
