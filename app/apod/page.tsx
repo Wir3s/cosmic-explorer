@@ -1,30 +1,10 @@
-export const dynamic = "force-dynamic";
 import Link from "next/link";
+import { fetchApod } from "@/app/lib/apod";
 
-type ApodData = {
-  date: string;
-  explanation: string;
-  hdurl?: string;
-  media_type: "image" | "video";
-  title: string;
-  url: string;
-  copyright?: string;
-};
-
-async function getApod(): Promise<ApodData> {
-  const res = await fetch("/api/apod", {
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    throw new Error("Failed to fetch APOD data");
-  }
-
-  return res.json();
-}
+export const dynamic = "force-dynamic";
 
 export default async function ApodPage() {
-  const apod = await getApod();
+  const apod = await fetchApod();
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
