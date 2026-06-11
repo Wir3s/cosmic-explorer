@@ -12,41 +12,15 @@ type ApodData = {
 };
 
 async function getApod(): Promise<ApodData> {
-  const apiKey = process.env.NASA_API_KEY;
+  const res = await fetch("/api/apod", {
+    cache: "no-store",
+  });
 
-  if (!apiKey) {
-    throw new Error("NASA_API_KEY is not set");
+  if (!res.ok) {
+    throw new Error("Failed to fetch APOD data");
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-
-  try {
-    const res = await fetch(
-      `https://api.nasa.gov/planetary/apod?api_key=${apiKey}`,
-  {
-  cache: "no-store",
-  signal: controller.signal,
-}
-    );
-
-    if (!res.ok) {
-      const errorText = await res.text();
-
-      throw new Error(
-        `Failed to fetch NASA image of the day. Status: ${res.status}. Response: ${errorText}`
-      );
-    }
-
-    const data = (await res.json()) as ApodData;
-
-    return data;
-  } catch (error) {
-    console.error("[APOD] Request errored or timed out:", error);
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
+  return res.json();
 }
 
 export default async function ApodPage() {
